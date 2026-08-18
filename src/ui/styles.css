@@ -1,0 +1,63 @@
+.toylink-panel {
+  --toylink-accent: #8f5cff;
+  --toylink-danger: #d7263d;
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.8rem;
+  color: var(--SmartThemeBodyColor, inherit);
+}
+.toylink-panel * { box-sizing: border-box; }
+.toylink-intro, .toylink-hint { opacity: 0.82; line-height: 1.5; }
+.toylink-step {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--SmartThemeBodyColor, #aaa) 22%, transparent);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--SmartThemeBlurTintColor, #222) 86%, transparent);
+}
+.toylink-step-title { display: flex; align-items: center; gap: 0.55rem; }
+.toylink-step-title h4 { margin: 0; }
+.toylink-step-number {
+  display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem;
+  border-radius: 999px; background: var(--toylink-accent); color: white; font-weight: 700;
+}
+.toylink-field { display: grid; gap: 0.35rem; }
+.toylink-label { font-weight: 650; }
+.toylink-field input, .toylink-field select, .toylink-field textarea {
+  width: 100%; min-height: 2.35rem; padding: 0.45rem 0.55rem;
+  color: inherit; background: var(--black30a, rgba(0,0,0,.22)); border: 1px solid currentColor; border-radius: 0.35rem;
+}
+.toylink-field textarea { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; resize: vertical; }
+.toylink-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.toylink-status { padding: 0.65rem; border-left: 4px solid var(--toylink-accent); background: rgba(143,92,255,.12); }
+.toylink-error, .toylink-warning { padding: 0.65rem; border-left: 4px solid var(--toylink-danger); background: rgba(215,38,61,.14); line-height: 1.45; }
+.toylink-error:empty { display: none; }
+.toylink-primary { background: var(--toylink-accent) !important; color: white !important; }
+.toylink-details { padding: 0.6rem; border: 1px dashed currentColor; border-radius: 0.45rem; opacity: 0.9; }
+.toylink-emergency-stop {
+  position: fixed; right: max(1rem, env(safe-area-inset-right)); bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 10050;
+  min-width: 10rem; min-height: 3.25rem; padding: 0.7rem 1.1rem;
+  border: 3px solid white !important; border-radius: 999px !important;
+  background: var(--toylink-danger) !important; color: white !important; font-size: 1rem; font-weight: 800;
+  box-shadow: 0 0.35rem 1rem rgba(0,0,0,.45); cursor: pointer;
+}
+.toylink-emergency-stop.toylink-is-active { animation: toylink-pulse 1s ease-in-out infinite alternate; }
+.toylink-modal-backdrop {
+  position: fixed; inset: 0; z-index: 11000; display: grid; place-items: center; padding: 1rem;
+  background: rgba(0,0,0,.72);
+}
+.toylink-modal {
+  width: min(34rem, 100%); max-height: 90vh; overflow: auto; padding: 1rem;
+  color: var(--SmartThemeBodyColor, #eee); background: var(--SmartThemeBlurTintColor, #24242a);
+  border: 1px solid currentColor; border-radius: 0.75rem; box-shadow: 0 0.8rem 2rem rgba(0,0,0,.55);
+}
+.toylink-modal h3 { margin-top: 0; }
+.toylink-modal p { overflow-wrap: anywhere; line-height: 1.5; }
+.toylink-modal-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+@keyframes toylink-pulse { from { transform: scale(1); } to { transform: scale(1.04); } }
+@media (max-width: 600px) {
+  .toylink-panel { padding: 0.35rem; }
+  .toylink-emergency-stop { right: 0.65rem; bottom: 0.65rem; min-width: 8.5rem; }
+}
+@media (prefers-reduced-motion: reduce) { .toylink-emergency-stop.toylink-is-active { animation: none; } }

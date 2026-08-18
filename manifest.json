@@ -1,0 +1,9 @@
+{
+  "display_name": "ToyLink 设备连接",
+  "loading_order": 100,
+  "js": "dist/index.js",
+  "css": "dist/style.css",
+  "author": "Killuaisaack",
+  "version": "0.1.0",
+  "auto_update": false
+}

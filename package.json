@@ -1,0 +1,33 @@
+{
+  "name": "toylink-sillytavern",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ToyLink：由用户明确授权的 SillyTavern 本地设备控制扩展",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test": "vitest run",
+    "verify:build": "node scripts/verify-build.mjs",
+    "verify": "npm run typecheck && npm run lint && npm run test:unit && npm run test:integration && npm run build && npm run verify:build"
+  },
+  "dependencies": {
+    "buttplug": "5.0.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.35.0",
+    "@types/node": "22.18.1",
+    "@types/web-bluetooth": "0.0.21",
+    "esbuild": "0.25.9",
+    "eslint": "9.35.0",
+    "globals": "16.3.0",
+    "jsdom": "26.1.0",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.42.0",
+    "vitest": "3.2.7"
+  }
+}

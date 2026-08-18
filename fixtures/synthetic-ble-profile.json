@@ -1,0 +1,12 @@
+{
+  "profileVersion": 1,
+  "name": "合成示例配置（不对应真实设备）",
+  "deviceNamePrefix": "Example",
+  "serviceUuid": "0000ffe0-0000-1000-8000-00805f9b34fb",
+  "writeCharacteristicUuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
+  "writeType": "without-response",
+  "commands": {
+    "stopHex": "550400000000AA",
+    "vibrateTemplateHex": "5504000001{intensity_u8}AA"
+  }
+}

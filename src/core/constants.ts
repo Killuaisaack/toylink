@@ -1,0 +1,12 @@
+export const ABSOLUTE_MAX_INTENSITY = 0.7;
+export const ABSOLUTE_MAX_DURATION_MS = 10_000;
+export const DEFAULT_MAX_INTENSITY = 0.35;
+export const DEFAULT_MAX_DURATION_MS = 3_000;
+export const COMMAND_FRESHNESS_MS = 15_000;
+export const COMMAND_FUTURE_TOLERANCE_MS = 5_000;
+export const TEST_DEFAULT_INTENSITY = 0.1;
+export const TEST_DEFAULT_DURATION_MS = 500;
+export const TEST_MAX_INTENSITY = 0.2;
+export const TEST_MAX_DURATION_MS = 1_000;
+export const STOP_RETRY_COUNT = 2;
+export const WATCHDOG_GRACE_MS = 750;
