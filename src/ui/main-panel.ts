@@ -44,17 +44,23 @@ export function createToyLinkMainPanel(panel: ToyLinkPanel): ToyLinkMainPanel {
   const header = node('div', 'toylink-modal-header');
   header.append(node('h3', '', 'ToyLink'), node('p', 'toylink-hint', '连接设备、进行安全测试，并在需要时允许当前角色请求设备运行。'));
   const close = node('button', 'menu_button', '关闭');
+  const setOpen = (open: boolean): void => {
+    backdrop.hidden = !open;
+    backdrop.setAttribute('aria-hidden', open ? 'false' : 'true');
+  };
+  const closePanel = (): void => setOpen(false);
   close.type = 'button';
-  close.addEventListener('click', () => closePanel());
+  close.addEventListener('click', closePanel);
   header.append(close);
   dialog.append(header, panel.root);
   backdrop.append(dialog);
-  const closePanel = (): void => { backdrop.hidden = true; backdrop.setAttribute('aria-hidden', 'true'); };
   backdrop.addEventListener('click', (event) => { if (event.target === backdrop) closePanel(); });
+  backdrop.addEventListener('keydown', (event) => { if (event.key === 'Escape') closePanel(); });
   document.body.append(backdrop);
+  setOpen(false);
   return {
     root: backdrop,
-    open: () => { backdrop.hidden = false; backdrop.setAttribute('aria-hidden', 'false'); close.focus(); },
+    open: () => { setOpen(true); close.focus(); },
     close: closePanel,
     update: (snapshot, settings) => panel.update(snapshot, settings),
     destroy: () => { panel.destroy(); backdrop.remove(); },

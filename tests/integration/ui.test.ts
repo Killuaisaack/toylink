@@ -3,6 +3,7 @@ import { ToyLinkPanel, type ToyLinkUiCallbacks } from '../../src/ui/settings-pan
 import { ToyLinkSettingsDisclosure } from '../../src/ui/settings-disclosure';
 import { ToyLinkEmergencyStopMenu } from '../../src/ui/emergency-stop-menu';
 import { ToyLinkWandMenu } from '../../src/ui/wand-menu';
+import { createToyLinkMainPanel } from '../../src/ui/main-panel';
 import { DEFAULT_SETTINGS } from '../../src/core/settings';
 import type { CoordinatorSnapshot } from '../../src/core/coordinator';
 
@@ -83,6 +84,41 @@ describe('中文引导界面', () => {
   });
 });
 
+
+describe('ToyLink 主面板开关', () => {
+  it('启动时隐藏，打开后显示，关闭后恢复隐藏', () => {
+    const panel = new ToyLinkPanel(structuredClone(DEFAULT_SETTINGS), callbacks, false, false);
+    const mainPanel = createToyLinkMainPanel(panel);
+
+    expect(mainPanel.root.hidden).toBe(true);
+    expect(mainPanel.root.getAttribute('aria-hidden')).toBe('true');
+
+    mainPanel.open();
+    expect(mainPanel.root.hidden).toBe(false);
+    expect(mainPanel.root.getAttribute('aria-hidden')).toBe('false');
+
+    mainPanel.close();
+    expect(mainPanel.root.hidden).toBe(true);
+    expect(mainPanel.root.getAttribute('aria-hidden')).toBe('true');
+
+    mainPanel.destroy();
+  });
+
+  it('点击遮罩或按 Escape 可以关闭', () => {
+    const panel = new ToyLinkPanel(structuredClone(DEFAULT_SETTINGS), callbacks, false, false);
+    const mainPanel = createToyLinkMainPanel(panel);
+    mainPanel.open();
+
+    mainPanel.root.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(mainPanel.root.hidden).toBe(true);
+
+    mainPanel.open();
+    mainPanel.root.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(mainPanel.root.hidden).toBe(true);
+
+    mainPanel.destroy();
+  });
+});
 
 describe('SillyTavern 原生界面适配', () => {
   it('使用原生 inline-drawer 结构并默认收起', () => {
