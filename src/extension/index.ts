@@ -82,7 +82,7 @@ class ToyLinkExtension {
         await this.coordinator.emergencyStop('你已点击“立即停止”。');
       });
       this.emergencyStopMenu = menu;
-      target.append(menu.button);
+      target.append(menu.container);
       menu.update(this.coordinator.snapshot());
     } catch (error) {
       console.warn('[ToyLink] 未能把“立即停止”加入魔法棒菜单。', error instanceof Error ? error.message : '未知错误');

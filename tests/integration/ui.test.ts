@@ -83,21 +83,57 @@ describe('中文引导界面', () => {
 });
 
 
-describe('collapsed extension settings entry', () => {
-  it('keeps the full ToyLink panel collapsed until the user opens it', () => {
+describe('SillyTavern 原生界面适配', () => {
+  it('使用原生 inline-drawer 结构并默认收起', () => {
     const panel = new ToyLinkPanel(structuredClone(DEFAULT_SETTINGS), callbacks, true, true);
     const disclosure = new ToyLinkSettingsDisclosure(panel.root);
     document.body.append(disclosure.root);
 
-    expect(disclosure.root.open).toBe(false);
-    expect(disclosure.root.querySelector('summary')?.textContent).toContain('ToyLink \u8bbe\u7f6e');
-    expect(disclosure.root.querySelector('summary')?.textContent).toContain('\u70b9\u51fb\u5c55\u5f00');
-    expect(disclosure.root.querySelector('#toylink-settings')).toBe(panel.root);
+    expect(disclosure.root.classList.contains('inline-drawer')).toBe(true);
+    expect(disclosure.root.classList.contains('extension_container')).toBe(true);
+    expect(disclosure.root.querySelector('.inline-drawer-toggle')).not.toBeNull();
+    expect(disclosure.root.querySelector('.inline-drawer-header')).not.toBeNull();
+    expect(disclosure.root.querySelector('.inline-drawer-icon.fa-circle-chevron-down')).not.toBeNull();
+    expect(disclosure.root.querySelector('.inline-drawer-content')).not.toBeNull();
+    expect(disclosure.root.querySelector('.inline-drawer-header summary')).toBeNull();
+    expect(disclosure.root.querySelector('.inline-drawer-header')?.textContent).toContain('ToyLink 设置');
+    expect(disclosure.root.querySelector('.inline-drawer-header')?.getAttribute('aria-expanded')).toBe('false');
 
-    disclosure.root.open = true;
-    disclosure.root.dispatchEvent(new Event('toggle'));
-    expect(disclosure.root.querySelector('summary')?.textContent).toContain('\u70b9\u51fb\u6536\u8d77');
+    disclosure.root.dispatchEvent(new Event('inline-drawer-toggle'));
+    expect(disclosure.root.querySelector('.inline-drawer-header')?.getAttribute('aria-expanded')).toBe('true');
+    disclosure.root.dispatchEvent(new Event('inline-drawer-toggle'));
+    expect(disclosure.root.querySelector('.inline-drawer-header')?.getAttribute('aria-expanded')).toBe('false');
     panel.destroy();
     disclosure.destroy();
+  });
+
+  it('使用酒馆魔法棒菜单的原生按钮结构，不创建悬浮停止按钮', async () => {
+    const host = document.createElement('div');
+    host.id = 'extensionsMenu';
+    document.body.append(host);
+    let stopCalls = 0;
+    const menu = new ToyLinkEmergencyStopMenu(async () => { stopCalls += 1; });
+    host.append(menu.container);
+    const snapshot: CoordinatorSnapshot = {
+      providerKind: 'intiface', connected: false, scanning: false, devices: [],
+      selectedDeviceId: null, aiAuthorized: false, active: false,
+      status: '尚未连接设备。', error: null, limits: { ...DEFAULT_SETTINGS.limits }, confirmationEnabled: true,
+    };
+    menu.update(snapshot);
+    expect(host.querySelector('.extension_container')).toBe(menu.container);
+    expect(menu.button.classList.contains('menu_button')).toBe(true);
+    expect(menu.button.classList.contains('menu_button_icon')).toBe(true);
+    expect(menu.button.querySelector('.fa-stop')).not.toBeNull();
+    expect(menu.button.querySelector('.toylink-menu-stop-label')?.textContent).toBe('立即停止');
+    expect(menu.button.textContent).toBe('立即停止');
+    expect(menu.button.style.position).toBe('');
+    menu.button.click();
+    await Promise.resolve();
+    expect(stopCalls).toBe(1);
+
+    menu.update({ ...snapshot, active: true });
+    expect(menu.button.textContent).toContain('正在运行');
+    expect(document.querySelector('.toylink-emergency-stop')).toBeNull();
+    menu.destroy();
   });
 });

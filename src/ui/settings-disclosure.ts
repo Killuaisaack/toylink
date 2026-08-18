@@ -5,22 +5,41 @@ function node<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string,
   return value;
 }
 
-/** A collapsed settings entry for the SillyTavern extensions settings drawer. */
+/**
+ * Uses SillyTavern's native inline-drawer structure for the full settings panel.
+ * SillyTavern's own delegated handler controls the open/closed animation.
+ */
 export class ToyLinkSettingsDisclosure {
-  readonly root = node('details', 'toylink-settings-entry extension_container');
+  readonly root = node('div', 'inline-drawer extension_container');
+  private readonly header: HTMLDivElement;
+  private readonly content: HTMLDivElement;
 
   constructor(content: HTMLElement) {
     this.root.id = 'toylink-settings-entry';
-    const summary = node('summary', 'toylink-settings-summary');
-    const title = node('span', 'toylink-settings-title', 'ToyLink \u8bbe\u7f6e');
-    const hint = node('span', 'toylink-settings-summary-hint', '\u70b9\u51fb\u5c55\u5f00');
-    summary.append(title, hint);
-    summary.setAttribute('aria-label', '\u5c55\u5f00\u6216\u6536\u8d77 ToyLink \u8bbe\u7f6e');
-    const body = node('div', 'toylink-settings-body');
-    body.append(content);
-    this.root.append(summary, body);
-    this.root.addEventListener('toggle', () => {
-      hint.textContent = this.root.open ? '\u70b9\u51fb\u6536\u8d77' : '\u70b9\u51fb\u5c55\u5f00';
+
+    this.header = node('div', 'inline-drawer-toggle inline-drawer-header');
+    this.header.setAttribute('role', 'button');
+    this.header.setAttribute('tabindex', '0');
+    this.header.setAttribute('aria-expanded', 'false');
+    this.header.setAttribute('aria-label', '展开或收起 ToyLink 设置');
+
+    const title = node('b', '', 'ToyLink 设置');
+    const icon = node('div', 'inline-drawer-icon fa-solid fa-circle-chevron-down down');
+    icon.setAttribute('aria-hidden', 'true');
+    this.header.append(title, icon);
+
+    this.content = node('div', 'inline-drawer-content');
+    this.content.append(content);
+
+    this.root.append(this.header, this.content);
+    this.root.addEventListener('inline-drawer-toggle', () => {
+      const expanded = this.header.getAttribute('aria-expanded') === 'true';
+      this.header.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+    });
+    this.header.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      this.header.click();
     });
   }
 
