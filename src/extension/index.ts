@@ -7,9 +7,10 @@ import { IntifaceProvider } from '../providers/intiface-provider';
 import type { ProviderKind, ToyProvider } from '../providers/toy-provider';
 import { ChineseConfirmationService, confirmBlePayload, confirmDangerousSetting, confirmDeleteProfile, confirmNonLoopback } from '../ui/confirm-dialog';
 import { ToyLinkSettingsDisclosure } from '../ui/settings-disclosure';
-import { ToyLinkEmergencyStopMenu } from '../ui/emergency-stop-menu';
+import { ToyLinkSettingsOverview, createToyLinkMainPanel, type ToyLinkMainPanel } from '../ui/main-panel';
+import { ToyLinkWandMenu } from '../ui/wand-menu';
 import { ToyLinkPanel, type ToyLinkUiCallbacks } from '../ui/settings-panel';
-import { getSillyTavernContext, waitForExtensionSettings, waitForExtensionsMenu, type SillyTavernContext } from './sillytavern';
+import { getSillyTavernContext, waitForExtensionSettings, type SillyTavernContext } from './sillytavern';
 import { ToyLinkToolCalling } from './tool-calling';
 
 const SETTINGS_KEY = 'toylink';
@@ -20,8 +21,10 @@ class ToyLinkExtension {
   private readonly coordinator: ToyLinkCoordinator;
   private readonly tools: ToyLinkToolCalling;
   private panel: ToyLinkPanel | null = null;
+  private mainPanel: ToyLinkMainPanel | null = null;
+  private settingsOverview: ToyLinkSettingsOverview | null = null;
   private settingsDisclosure: ToyLinkSettingsDisclosure | null = null;
-  private emergencyStopMenu: ToyLinkEmergencyStopMenu | null = null;
+  private wandMenu: ToyLinkWandMenu | null = null;
   private readonly contextHandler = (): void => { void this.coordinator.handleContextChange(); };
 
   constructor(private readonly context: SillyTavernContext) {
@@ -51,43 +54,39 @@ class ToyLinkExtension {
       this.tools.isSupported(),
       typeof navigator !== 'undefined' && 'bluetooth' in navigator,
     );
-    this.settingsDisclosure = new ToyLinkSettingsDisclosure(this.panel.root);
+    this.mainPanel = createToyLinkMainPanel(this.panel);
+    this.settingsOverview = new ToyLinkSettingsOverview(() => this.mainPanel?.open());
+    this.settingsDisclosure = new ToyLinkSettingsDisclosure(this.settingsOverview.root);
     target.append(this.settingsDisclosure.root);
     this.coordinator.subscribe((snapshot) => {
-      this.panel?.update(snapshot, this.settings);
-      this.emergencyStopMenu?.update(snapshot);
+      this.mainPanel?.update(snapshot, this.settings);
+      this.settingsOverview?.update(snapshot);
+      this.wandMenu?.update(snapshot);
     });
-    // 魔法棒菜单由 SillyTavern 动态创建；它不可用时不影响完整设置页。
-    void this.mountEmergencyStopMenu();
+    this.wandMenu = new ToyLinkWandMenu(
+      () => this.mainPanel?.open(),
+      async () => this.coordinator.emergencyStop('你已点击“立即停止”。'),
+    );
+    this.wandMenu.observe();
+    this.wandMenu.update(this.coordinator.snapshot());
     this.tools.refresh();
     this.bindHostEvents();
     this.saveCurrentSettings();
   }
 
   shutdown(): void {
-    this.emergencyStopMenu?.destroy();
-    this.emergencyStopMenu = null;
+    this.wandMenu?.destroy();
+    this.wandMenu = null;
     this.tools.dispose();
     this.unbindHostEvents();
     this.coordinator.shutdown();
-    this.panel?.destroy();
+    this.mainPanel?.destroy();
+    this.mainPanel = null;
+    this.settingsOverview?.destroy();
+    this.settingsOverview = null;
     this.settingsDisclosure?.destroy();
   }
 
-  private async mountEmergencyStopMenu(): Promise<void> {
-    try {
-      const target = await waitForExtensionsMenu();
-      if (this.emergencyStopMenu) return;
-      const menu = new ToyLinkEmergencyStopMenu(async () => {
-        await this.coordinator.emergencyStop('你已点击“立即停止”。');
-      });
-      this.emergencyStopMenu = menu;
-      target.append(menu.container);
-      menu.update(this.coordinator.snapshot());
-    } catch (error) {
-      console.warn('[ToyLink] 未能把“立即停止”加入魔法棒菜单。', error instanceof Error ? error.message : '未知错误');
-    }
-  }
 
   private createCallbacks(): ToyLinkUiCallbacks {
     return {
@@ -224,7 +223,8 @@ class ToyLinkExtension {
   private persist(settings: ToyLinkSettings): void {
     this.settings = structuredClone(settings);
     this.saveCurrentSettings();
-    this.panel?.update(this.coordinator.snapshot(), this.settings);
+    this.mainPanel?.update(this.coordinator.snapshot(), this.settings);
+    this.settingsOverview?.update(this.coordinator.snapshot());
   }
 
   private saveCurrentSettings(): void {

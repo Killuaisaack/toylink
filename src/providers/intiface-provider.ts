@@ -6,7 +6,7 @@ import {
   type ButtplugClientDevice,
 } from 'buttplug';
 import { isValidWebSocketEndpoint } from '../core/settings';
-import type { ToyDeviceSummary, ToyProviderConfig } from './toy-provider';
+import type { ToyDeviceSummary, ToyFeature, ToyFeatureType, ToyProviderConfig } from './toy-provider';
 import { EventedToyProvider } from './toy-provider';
 
 export type IntifacePortEvent =
@@ -74,7 +74,7 @@ export class ButtplugIntifacePort implements IntifacePort {
       .map((device) => ({
         id: String(device.index),
         name: device.displayName?.trim() || device.name || '未命名设备',
-        capabilities: { vibrate: true },
+        capabilities: buildCapabilities(device),
       }));
   }
 
@@ -108,6 +108,39 @@ export class ButtplugIntifacePort implements IntifacePort {
 
   private emitDevices(): void { this.emit({ type: 'devices', devices: this.listDevices() }); }
   private emit(event: IntifacePortEvent): void { for (const listener of this.listeners) listener(event); }
+}
+
+function outputFeatureType(type: OutputType): ToyFeatureType {
+  switch (type) {
+    case OutputType.Vibrate: return 'vibrate';
+    case OutputType.Rotate: return 'rotate';
+    case OutputType.Position:
+    case OutputType.HwPositionWithDuration: return 'linear';
+    case OutputType.Oscillate: return 'oscillate';
+    case OutputType.Constrict: return 'constrict';
+    default: return 'unknown';
+  }
+}
+
+function buildCapabilities(device: ButtplugClientDevice): { vibrate: boolean; features: readonly ToyFeature[]; canStop: boolean } {
+  const features: ToyFeature[] = [];
+  for (const feature of device.features.values()) {
+    for (const output of feature.outputs.values()) {
+      const type = outputFeatureType(output.type);
+      const sameTypeCount = [...device.features.values()].filter((candidate) => candidate.hasOutput(output.type)).length;
+      const supported = type === 'vibrate' && sameTypeCount === 1;
+      features.push({
+        id: type === 'vibrate' && sameTypeCount === 1 ? 'vibrate' : `${type}-${feature.index}`,
+        type,
+        label: feature.featureDescriptor.trim() || `${type} ${feature.index + 1}`,
+        actuatorIndex: feature.index,
+        supported,
+        stepCount: output.valueRange[1] - output.valueRange[0] + 1,
+        supportsDirection: type === 'rotate',
+      });
+    }
+  }
+  return { vibrate: features.some((feature) => feature.type === 'vibrate'), features, canStop: true };
 }
 
 function safeError(error: unknown, fallback: string): string {

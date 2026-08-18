@@ -7,7 +7,7 @@ export class FakeProvider extends EventedToyProvider {
   scanning = false;
   selectedId: string | null = null;
   readonly calls: string[] = [];
-  devices: ToyDeviceSummary[] = [{ id: 'fake-1', name: '模拟设备', capabilities: { vibrate: true } }];
+  devices: ToyDeviceSummary[] = [{ id: 'fake-1', name: '模拟设备', capabilities: { vibrate: true, canStop: true, features: [{ id: 'vibrate', type: 'vibrate', label: '\u632f\u52a8', actuatorIndex: 0, supported: true }] } }];
   failVibrate = false;
   failStopCount = 0;
 

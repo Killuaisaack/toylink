@@ -9,6 +9,8 @@ import {
 } from '../core/constants';
 import type { ToyLinkSettings } from '../core/settings';
 import type { ProviderKind } from '../providers/toy-provider';
+import { createDeviceCapabilitiesView } from './device-capabilities';
+import { ToyLinkProfileEditor } from './profile-editor';
 
 export interface ToyLinkUiCallbacks {
   changeProvider(kind: ProviderKind): Promise<void>;
@@ -68,7 +70,7 @@ export class ToyLinkPanel {
   private readonly bleSection = node('div', 'toylink-ble-section');
   private readonly intifaceSection = node('div', 'toylink-intiface-section');
   private readonly profileSelect = node('select') as HTMLSelectElement;
-  private readonly profileEditor = node('textarea') as HTMLTextAreaElement;
+  private readonly profileEditor = new ToyLinkProfileEditor();
   private readonly deviceSelect = node('select') as HTMLSelectElement;
   private readonly connectButton = button('连接');
   private readonly disconnectButton = button('断开');
@@ -82,6 +84,7 @@ export class ToyLinkPanel {
   private readonly maxIntensity = node('input') as HTMLInputElement;
   private readonly maxDuration = node('input') as HTMLInputElement;
   private readonly toolSupport = node('p', 'toylink-hint');
+  private readonly capabilities = node('div', 'toylink-capabilities');
 
   constructor(
     settings: ToyLinkSettings,
@@ -124,6 +127,7 @@ export class ToyLinkPanel {
     this.stopScanButton.disabled = !snapshot.scanning;
     this.selectDeviceButton.disabled = this.deviceSelect.value === '' || !snapshot.connected;
     this.renderDeviceOptions();
+    this.capabilities.replaceChildren(createDeviceCapabilitiesView(snapshot.devices.find((device) => device.id === snapshot.selectedDeviceId) ?? null));
     this.renderSettings();
   }
 
@@ -149,21 +153,25 @@ export class ToyLinkPanel {
     this.intifaceSection.append(labeled('Intiface 地址', this.endpointInput, '127.0.0.1 指正在打开本页面的手机或电脑，不是 SillyTavern 所在服务器。'));
 
     this.profileSelect.addEventListener('change', () => { void this.run(() => this.callbacks.selectBleProfile(this.profileSelect.value || null)); });
-    this.profileEditor.rows = 9;
-    this.profileEditor.placeholder = '在这里粘贴蓝牙配置 JSON';
+    this.profileEditor.textarea.rows = 9;
+    this.profileEditor.textarea.placeholder = '在这里粘贴蓝牙配置 JSON';
     const profileActions = node('div', 'toylink-actions');
     const save = button('检查并保存');
     const importButton = button('从文件导入');
     const exportButton = button('导出当前配置');
     const deleteButton = button('删除当前配置');
     const file = node('input') as HTMLInputElement; file.type = 'file'; file.accept = 'application/json,.json'; file.hidden = true;
-    save.addEventListener('click', () => { void this.run(() => this.callbacks.saveBleProfile(this.profileEditor.value)); });
+    save.addEventListener('click', () => {
+      const readiness = this.profileEditor.validate();
+      if (readiness.valid) void this.run(() => this.callbacks.saveBleProfile(this.profileEditor.textarea.value));
+    });
     importButton.addEventListener('click', () => file.click());
     file.addEventListener('change', () => { const selected = file.files?.[0]; if (selected) void this.run(() => this.callbacks.importBleProfile(selected)); file.value = ''; });
     exportButton.addEventListener('click', () => this.callbacks.exportBleProfile());
     deleteButton.addEventListener('click', () => { void this.run(() => this.callbacks.deleteBleProfile()); });
     profileActions.append(save, importButton, exportButton, deleteButton, file);
-    this.bleSection.append(labeled('已保存的蓝牙配置', this.profileSelect), labeled('配置内容', this.profileEditor, '配置由你提供，ToyLink 只检查格式，不验证具体设备兼容性。'), profileActions);
+    this.bleSection.append(labeled('已保存的蓝牙配置', this.profileSelect), this.profileEditor.root, profileActions);
+    this.profileEditor.root.classList.add('toylink-field');
     if (!bluetoothSupported) this.bleSection.append(node('p', 'toylink-warning', '当前浏览器不支持直接连接蓝牙设备。你仍可检查和保存配置。'));
 
     const connectionActions = node('div', 'toylink-actions');
@@ -262,7 +270,8 @@ export class ToyLinkPanel {
     }
     this.profileSelect.value = current;
     const selected = this.settings.bleProfiles.find((item) => item.id === current);
-    if (selected && document.activeElement !== this.profileEditor) this.profileEditor.value = JSON.stringify(selected.profile, null, 2);
+    if (selected && document.activeElement !== this.profileEditor.textarea) this.profileEditor.setValue(selected.profile);
+    if (!selected && document.activeElement !== this.profileEditor.textarea) this.profileEditor.setValue('');
   }
 
   private renderDeviceOptions(): void {

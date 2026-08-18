@@ -1,4 +1,4 @@
-import { COMMAND_FRESHNESS_MS, COMMAND_FUTURE_TOLERANCE_MS } from './constants';
+﻿import { COMMAND_FRESHNESS_MS, COMMAND_FUTURE_TOLERANCE_MS } from './constants';
 import type { ToyCommand } from './commands';
 
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
@@ -53,16 +53,25 @@ export function parseToyCommand(input: unknown, now: number): ToyCommand {
   return { action: 'vibrate', intensity: input.intensity, durationMs: input.durationMs, ...common };
 }
 
-export interface ToolVibrateArgs { intensity: number; duration_ms: number }
+export interface ToolVibrateArgs { feature: string; intensity: number; duration_ms: number }
 
 export function parseToolVibrateArgs(input: unknown): ToolVibrateArgs {
   if (!isRecord(input)) throw new CommandValidationError('角色请求格式不正确。');
-  assertExactKeys(input, ['intensity', 'duration_ms']);
+  const keys = Object.keys(input).sort();
+  const legacyKeys = ['duration_ms', 'intensity'];
+  const featureKeys = ['duration_ms', 'feature', 'intensity'];
+  if (keys.join('|') !== legacyKeys.join('|') && keys.join('|') !== featureKeys.join('|')) {
+    throw new CommandValidationError('角色请求包含缺失或不支持的字段。');
+  }
+  const feature = input.feature === undefined ? 'vibrate' : input.feature;
+  if (typeof feature !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(feature)) {
+    throw new CommandValidationError('角色提供的设备能力无效。');
+  }
   if (typeof input.intensity !== 'number' || !Number.isFinite(input.intensity) || input.intensity < 0 || input.intensity > 1) {
     throw new CommandValidationError('角色提供的强度无效。');
   }
   if (typeof input.duration_ms !== 'number' || !Number.isSafeInteger(input.duration_ms) || input.duration_ms <= 0) {
     throw new CommandValidationError('角色提供的时长无效。');
   }
-  return { intensity: input.intensity, duration_ms: input.duration_ms };
+  return { feature, intensity: input.intensity, duration_ms: input.duration_ms };
 }

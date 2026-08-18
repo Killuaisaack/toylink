@@ -3,7 +3,7 @@ import type { AppliedVibration, CommandOrigin, ToyCommand } from './commands';
 import { STOP_RETRY_COUNT, TEST_MAX_DURATION_MS, TEST_MAX_INTENSITY, WATCHDOG_GRACE_MS } from './constants';
 import { applySafetyLimits, normalizeLimits, type SafetyLimits } from './safety-controller';
 import type { ToyLinkSettings } from './settings';
-import type { ProviderKind, ToyDeviceSummary, ToyProvider, ToyProviderEvent } from '../providers/toy-provider';
+import { getToyFeatures, hasSupportedFeature, type ProviderKind, type ToyDeviceSummary, type ToyProvider, type ToyProviderEvent, type ToyFeature, } from '../providers/toy-provider';
 
 export interface ConfirmationRequest {
   origin: CommandOrigin;
@@ -39,10 +39,16 @@ export interface CoordinatorSnapshot {
   confirmationEnabled: boolean;
 }
 
+export interface SanitizedFeatureStatus {
+  type: ToyFeature['type'];
+  available: boolean;
+}
+
 export interface SanitizedStatus {
   connected: boolean;
   deviceSelected: boolean;
   vibrationAvailable: boolean;
+  features: readonly SanitizedFeatureStatus[];
   aiAuthorized: boolean;
   active: boolean;
 }
@@ -69,6 +75,7 @@ export class ToyLinkCoordinator {
   private activeCommandId: string | null = null;
   private expiryTimer: unknown = null;
   private watchdogTimer: unknown = null;
+  private executionGeneration = 0;
   private status = '尚未连接设备。';
   private error: string | null = null;
 
@@ -96,7 +103,13 @@ export class ToyLinkCoordinator {
       providerKind: this.settings.providerKind,
       connected: this.connected,
       scanning: this.scanning,
-      devices: this.devices.map((device) => ({ ...device, capabilities: { ...device.capabilities } })),
+      devices: this.devices.map((device) => ({
+        ...device,
+        capabilities: {
+          ...device.capabilities,
+          features: getToyFeatures(device).map((feature) => ({ ...feature })),
+        },
+      })),
       selectedDeviceId: this.selectedDeviceId,
       aiAuthorized: this.aiAuthorized,
       active: this.activeCommandId !== null,
@@ -115,6 +128,7 @@ export class ToyLinkCoordinator {
       connected: this.connected,
       deviceSelected: selected !== undefined,
       vibrationAvailable: selected?.capabilities.vibrate === true,
+      features: selected ? getToyFeatures(selected).map((feature) => ({ type: feature.type, available: feature.supported })) : [],
       aiAuthorized: this.aiAuthorized,
       active: this.activeCommandId !== null,
     };
@@ -228,12 +242,25 @@ export class ToyLinkCoordinator {
       await this.emergencyStop(origin === 'ai' ? '角色请求停止。' : '已停止。');
       return null;
     }
-    return this.executeVibration(command, origin);
+    return this.executeVibration(command, origin, 'vibrate');
   }
 
+  async executeFeature(featureId: unknown, intensity: number, durationMs: number, origin: CommandOrigin, commandId = `feature-${this.now()}`): Promise<AppliedVibration> {
+    if (typeof featureId !== 'string' || !/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(featureId)) {
+      throw new Error('\u8bbe\u5907\u80fd\u529b\u6807\u8bc6\u65e0\u6548\u3002');
+    }
+    const command = parseToyCommand({ action: 'vibrate', intensity, durationMs, commandId, createdAt: this.now() }, this.now());
+    this.pruneSeenCommands();
+    if (command.action !== 'vibrate') throw new Error('\u8bbe\u5907\u8fd0\u884c\u8bf7\u6c42\u65e0\u6548\u3002');
+    if (this.seenCommands.has(command.commandId)) throw new Error('\u8fd9\u4e2a\u8bf7\u6c42\u5df2\u7ecf\u5904\u7406\u8fc7\u3002');
+    this.seenCommands.set(command.commandId, command.createdAt);
+    return this.executeVibration(command, origin, featureId);
+  }
   async emergencyStop(reason = '已立即停止。'): Promise<void> {
+    this.executionGeneration += 1;
     this.clearTimers();
     this.activeCommandId = null;
+    this.provider.cancelPending?.();
     let lastError: unknown = null;
     for (let attempt = 0; attempt <= STOP_RETRY_COUNT; attempt += 1) {
       try {
@@ -255,18 +282,22 @@ export class ToyLinkCoordinator {
   }
 
   shutdown(): void {
+    this.executionGeneration += 1;
     this.aiAuthorized = false;
+    this.activeCommandId = null;
     this.clearTimers();
+    this.provider.cancelPending?.();
     void this.provider.stop().catch(() => undefined);
     void this.provider.disconnect().catch(() => undefined);
     this.unsubscribeProvider();
   }
 
-  private async executeVibration(command: Extract<ToyCommand, { action: 'vibrate' }>, origin: CommandOrigin): Promise<AppliedVibration> {
+  private async executeVibration(command: Extract<ToyCommand, { action: 'vibrate' }>, origin: CommandOrigin, featureId: string): Promise<AppliedVibration> {
     const selected = this.devices.find((device) => device.id === this.selectedDeviceId);
     if (!this.provider.isConnected() || !this.connected) throw new Error('请先连接设备。');
     if (!selected) throw new Error('请先明确选择要使用的设备。');
-    if (!selected.capabilities.vibrate) throw new Error('所选设备不支持这项操作。');
+    if (!selected.capabilities.vibrate) throw new Error('所选设备不支持振动。');
+    if (!hasSupportedFeature(selected, featureId)) throw new Error('所选设备不支持这项能力，当前版本暂不支持独立控制。');
     if (origin === 'ai' && !this.aiAuthorized) throw new Error('你还没有允许角色控制设备。');
     const limits = origin === 'manual'
       ? {
@@ -275,15 +306,18 @@ export class ToyLinkCoordinator {
       }
       : this.settings.limits;
     const applied = applySafetyLimits(command.intensity, command.durationMs, limits);
+    const confirmationGeneration = this.executionGeneration;
     if (this.settings.confirmationEnabled) {
       const confirmed = await this.confirmation.confirmVibration({
         origin,
         requested: { intensity: command.intensity, durationMs: command.durationMs },
         applied,
       });
+      if (confirmationGeneration !== this.executionGeneration) throw new Error('\u8fd9\u6b21\u64cd\u4f5c\u5df2\u88ab\u505c\u6b62\u3002');
       if (!confirmed) throw new Error('你取消了这次操作。');
     }
     await this.emergencyStop('正在准备新的操作。');
+    const actionGeneration = this.executionGeneration;
     this.activeCommandId = command.commandId;
     this.status = `设备将运行 ${(applied.durationMs / 1000).toFixed(1)} 秒，强度 ${Math.round(applied.intensity * 100)}%。`;
     this.error = null;
@@ -293,6 +327,7 @@ export class ToyLinkCoordinator {
     this.emit();
     try {
       await this.provider.vibrate(applied.intensity, applied.durationMs, command.commandId);
+      if (actionGeneration !== this.executionGeneration) throw new Error('\u8fd9\u6b21\u64cd\u4f5c\u5df2\u88ab\u505c\u6b62\u3002');
       return applied;
     } catch (error) {
       await this.emergencyStop('执行过程中出现问题，已尝试停止。');

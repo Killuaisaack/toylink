@@ -49,8 +49,9 @@ export class ToyLinkToolCalling {
         parameters: {
           type: 'object',
           additionalProperties: false,
-          required: ['intensity', 'duration_ms'],
+          required: ['feature', 'intensity', 'duration_ms'],
           properties: {
+            feature: { type: 'string', description: '用户已经选择并允许的设备能力标识，例如 vibrate.' },
             intensity: { type: 'number', minimum: 0, maximum: 1, description: '归一化强度，0 到 1。' },
             duration_ms: { type: 'integer', minimum: 1, description: '运行时间，单位为毫秒。' },
           },
@@ -95,14 +96,13 @@ export class ToyLinkToolCalling {
       this.pendingFingerprints.add(fingerprint);
       for (const [key, timestamp] of this.fingerprints) if (now - timestamp > 10_000) this.fingerprints.delete(key);
       try {
-        const applied = await this.coordinator.execute({
-          action: 'vibrate',
-          intensity: args.intensity,
-          durationMs: args.duration_ms,
-          commandId: this.nextId('vibrate'),
-          createdAt: now,
-        }, 'ai');
-        if (!applied) return '没有执行运行请求。';
+        const applied = await this.coordinator.executeFeature(
+          args.feature,
+          args.intensity,
+          args.duration_ms,
+          'ai',
+          this.nextId('vibrate'),
+        );
         this.fingerprints.set(fingerprint, Date.now());
         return `用户的浏览器已接受请求；实际强度 ${Math.round(applied.intensity * 100)}%，时长 ${(applied.durationMs / 1000).toFixed(1)} 秒。`;
       } finally {
@@ -124,10 +124,10 @@ export class ToyLinkToolCalling {
     ].join(' ');
   }
 
-  private fingerprint(args: { intensity: number; duration_ms: number }): string {
+  private fingerprint(args: { feature: string; intensity: number; duration_ms: number }): string {
     const context = this.getContext();
     const chat = String(context?.chatId ?? context?.characterId ?? 'unknown');
-    return `${chat}:${args.intensity.toFixed(6)}:${args.duration_ms}`;
+    return `${chat}:${args.feature}:${args.intensity.toFixed(6)}:${args.duration_ms}`;
   }
 
   private nextId(action: string): string {

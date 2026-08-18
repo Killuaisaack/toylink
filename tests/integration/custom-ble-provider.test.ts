@@ -47,6 +47,22 @@ describe('自定义蓝牙连接模块', () => {
     expect(port.writes.map((item) => item.bytes)).toEqual([[1, 128], [0]]);
   });
 
+  it('cancels a pending first-test preview before writing', async () => {
+    const port = new FakeBlePort();
+    let resolvePreview!: (allowed: boolean) => void;
+    const preview = vi.fn(() => new Promise<boolean>((resolve) => { resolvePreview = resolve; }));
+    const provider = new CustomBleProvider(() => stored, port, undefined, preview);
+    await provider.connect({ bleProfileId: 'p1' });
+    await provider.startScanning();
+    await provider.selectDevice(provider.listDevices()[0]!.id);
+    const running = provider.vibrate(0.1, 100, 'x');
+    await Promise.resolve();
+    await provider.stop();
+    resolvePreview(true);
+    await expect(running).rejects.toThrow(String.fromCodePoint(0x505c, 0x6b62));
+    expect(port.writes).toEqual([{ bytes: [0], type: 'without-response' }]);
+  });
+
   it('用户取消首次预览时不写入', async () => {
     const port = new FakeBlePort();
     const provider = new CustomBleProvider(() => stored, port, undefined, async () => false);
