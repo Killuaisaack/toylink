@@ -5,16 +5,17 @@ function createMenu(): { container: HTMLDivElement; button: HTMLDivElement; labe
   container.className = 'extension_container';
   container.id = 'toylink-emergency-stop-wand-container';
 
-  // SillyTavern's wand extensions use a div.menu_button inside an extension_container.
+  // Match SillyTavern's native wand item shape so the host supplies the
+  // same spacing, colors, hover state, and touch target as other entries.
   const value = document.createElement('div');
-  value.className = 'menu_button menu_button_icon toylink-menu-stop';
+  value.className = 'list-group-item flex-container flexGap5 toylink-menu-stop';
   value.setAttribute('role', 'button');
   value.setAttribute('tabindex', '0');
   value.setAttribute('aria-label', '立即停止 ToyLink 设备');
   value.title = '停止 ToyLink 当前运行';
 
-  const icon = document.createElement('i');
-  icon.className = 'fa-solid fa-stop';
+  const icon = document.createElement('div');
+  icon.className = 'fa-fw fa-solid fa-stop extensionsMenuExtensionButton';
   icon.setAttribute('aria-hidden', 'true');
   const label = document.createElement('span');
   label.className = 'toylink-menu-stop-label';

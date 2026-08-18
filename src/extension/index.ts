@@ -10,7 +10,7 @@ import { ToyLinkSettingsDisclosure } from '../ui/settings-disclosure';
 import { ToyLinkSettingsOverview, createToyLinkMainPanel, type ToyLinkMainPanel } from '../ui/main-panel';
 import { ToyLinkWandMenu } from '../ui/wand-menu';
 import { ToyLinkPanel, type ToyLinkUiCallbacks } from '../ui/settings-panel';
-import { getSillyTavernContext, waitForExtensionSettings, type SillyTavernContext } from './sillytavern';
+import { getSillyTavernContext, waitForExtensionSettings, waitForSillyTavernContext, type SillyTavernContext } from './sillytavern';
 import { ToyLinkToolCalling } from './tool-calling';
 
 const SETTINGS_KEY = 'toylink';
@@ -54,21 +54,36 @@ class ToyLinkExtension {
       this.tools.isSupported(),
       typeof navigator !== 'undefined' && 'bluetooth' in navigator,
     );
-    this.mainPanel = createToyLinkMainPanel(this.panel);
+
+    // Mount the native settings entry before optional UI integrations. If a
+    // particular SillyTavern build has a different wand implementation, the
+    // user must still have a visible way to open ToyLink from Extensions.
     this.settingsOverview = new ToyLinkSettingsOverview(() => this.mainPanel?.open());
     this.settingsDisclosure = new ToyLinkSettingsDisclosure(this.settingsOverview.root);
     target.append(this.settingsDisclosure.root);
+    this.mainPanel = createToyLinkMainPanel(this.panel);
+
     this.coordinator.subscribe((snapshot) => {
       this.mainPanel?.update(snapshot, this.settings);
       this.settingsOverview?.update(snapshot);
       this.wandMenu?.update(snapshot);
     });
-    this.wandMenu = new ToyLinkWandMenu(
-      () => this.mainPanel?.open(),
-      async () => this.coordinator.emergencyStop('你已点击“立即停止”。'),
-    );
-    this.wandMenu.observe();
-    this.wandMenu.update(this.coordinator.snapshot());
+
+    // The wand popup is created dynamically by SillyTavern. A failure here is
+    // deliberately isolated so it cannot remove or suppress the settings
+    // entry mounted above.
+    try {
+      this.wandMenu = new ToyLinkWandMenu(
+        () => this.mainPanel?.open(),
+        async () => this.coordinator.emergencyStop('你已点击“立即停止”。'),
+      );
+      this.wandMenu.observe();
+      this.wandMenu.update(this.coordinator.snapshot());
+    } catch (error) {
+      this.wandMenu = null;
+      console.warn('[ToyLink] 魔法棒入口暂时无法挂载，设置页入口仍可使用。', error instanceof Error ? error.message : '未知错误');
+    }
+
     this.tools.refresh();
     this.bindHostEvents();
     this.saveCurrentSettings();
@@ -80,7 +95,8 @@ class ToyLinkExtension {
     this.tools.dispose();
     this.unbindHostEvents();
     this.coordinator.shutdown();
-    this.mainPanel?.destroy();
+    if (this.mainPanel) this.mainPanel.destroy();
+    else this.panel?.destroy();
     this.mainPanel = null;
     this.settingsOverview?.destroy();
     this.settingsOverview = null;
@@ -251,7 +267,9 @@ let extension: ToyLinkExtension | null = null;
 
 async function initialize(): Promise<void> {
   if (extension) return;
-  const context = getSillyTavernContext();
+  // Third-party scripts can be evaluated just before the host context is
+  // ready. Wait briefly instead of returning forever and leaving no entry.
+  const context = await waitForSillyTavernContext();
   if (!context) {
     console.error('[ToyLink] 无法获取 SillyTavern 扩展接口。');
     return;

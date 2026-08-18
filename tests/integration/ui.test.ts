@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToyLinkPanel, type ToyLinkUiCallbacks } from '../../src/ui/settings-panel';
 import { ToyLinkSettingsDisclosure } from '../../src/ui/settings-disclosure';
 import { ToyLinkEmergencyStopMenu } from '../../src/ui/emergency-stop-menu';
+import { ToyLinkWandMenu } from '../../src/ui/wand-menu';
 import { DEFAULT_SETTINGS } from '../../src/core/settings';
 import type { CoordinatorSnapshot } from '../../src/core/coordinator';
 
@@ -121,9 +122,10 @@ describe('SillyTavern 原生界面适配', () => {
     };
     menu.update(snapshot);
     expect(host.querySelector('.extension_container')).toBe(menu.container);
-    expect(menu.button.classList.contains('menu_button')).toBe(true);
-    expect(menu.button.classList.contains('menu_button_icon')).toBe(true);
-    expect(menu.button.querySelector('.fa-stop')).not.toBeNull();
+    expect(menu.button.classList.contains('list-group-item')).toBe(true);
+    expect(menu.button.classList.contains('flex-container')).toBe(true);
+    expect(menu.button.classList.contains('flexGap5')).toBe(true);
+    expect(menu.button.querySelector('.fa-stop.extensionsMenuExtensionButton')).not.toBeNull();
     expect(menu.button.querySelector('.toylink-menu-stop-label')?.textContent).toBe('立即停止');
     expect(menu.button.textContent).toBe('立即停止');
     expect(menu.button.style.position).toBe('');
@@ -134,6 +136,26 @@ describe('SillyTavern 原生界面适配', () => {
     menu.update({ ...snapshot, active: true });
     expect(menu.button.textContent).toContain('正在运行');
     expect(document.querySelector('.toylink-emergency-stop')).toBeNull();
+    menu.destroy();
+  });
+});
+
+
+describe('Magic wand mount location', () => {
+  it('does not mount into the extension settings drawer', () => {
+    const settingsDrawer = document.createElement('div');
+    settingsDrawer.className = 'extensions_block';
+    document.body.append(settingsDrawer);
+    const host = document.createElement('div');
+    host.id = 'extensionsMenu';
+    document.body.append(host);
+
+    const menu = new ToyLinkWandMenu(noopAsync, noopAsync);
+    menu.observe();
+
+    expect(host.querySelector('#toylink-open-wand-container')).not.toBeNull();
+    expect(host.querySelector('#toylink-emergency-stop-wand-container')).not.toBeNull();
+    expect(settingsDrawer.querySelector('#toylink-open-wand-container')).toBeNull();
     menu.destroy();
   });
 });

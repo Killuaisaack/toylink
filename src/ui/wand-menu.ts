@@ -6,12 +6,15 @@ function menuItem(id: string, labelText: string, iconName: string, onClick: () =
   container.className = 'extension_container';
   container.id = id;
   const button = document.createElement('div');
-  button.className = 'menu_button menu_button_icon';
+  // Match SillyTavern's native wand item shape (for example,
+  // `.list-group-item.flex-container.flexGap5`). The host applies its own
+  // padding, colors, hover state, and sizing to this structure.
+  button.className = 'list-group-item flex-container flexGap5';
   button.setAttribute('role', 'button');
   button.setAttribute('tabindex', '0');
   button.setAttribute('aria-label', labelText);
-  const icon = document.createElement('i');
-  icon.className = `fa-solid ${iconName}`;
+  const icon = document.createElement('div');
+  icon.className = `fa-fw fa-solid ${iconName} extensionsMenuExtensionButton`;
   icon.setAttribute('aria-hidden', 'true');
   const text = document.createElement('span');
   text.textContent = labelText;
@@ -58,7 +61,9 @@ export class ToyLinkWandMenu {
   }
 
   private mountCandidate(): void {
-    const candidate = document.querySelector<HTMLElement>('#extensionsMenu, #extensionsMenuPopup, #extensions_menu, .extensions_block');
+    // Never use `.extensions_block` as a fallback. It is the settings
+    // drawer, so appending here hides the item from the magic-wand popup.
+    const candidate = document.querySelector<HTMLElement>('#extensionsMenu, #extensionsMenuPopup, #extensions_menu');
     if (candidate) this.mount(candidate);
   }
 

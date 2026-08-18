@@ -37,10 +37,24 @@ export function getSillyTavernContext(): SillyTavernContext | null {
   catch { return null; }
 }
 
+export async function waitForSillyTavernContext(timeoutMs = 15_000): Promise<SillyTavernContext | null> {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const context = getSillyTavernContext();
+    if (context) return context;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return null;
+}
+
 export async function waitForExtensionSettings(timeoutMs = 15_000): Promise<HTMLElement> {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    const target = document.querySelector<HTMLElement>('#extensions_settings');
+    // SillyTavern currently splits extension settings into two columns. The
+    // first column is the normal location, while the second one is used by
+    // some builds/themes. Do not fall back to `.extensions_block` here: that
+    // is the drawer wrapper, not an extension settings slot.
+    const target = document.querySelector<HTMLElement>('#extensions_settings, #extensions_settings2');
     if (target) return target;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
@@ -51,7 +65,9 @@ export async function waitForExtensionSettings(timeoutMs = 15_000): Promise<HTML
 export async function waitForExtensionsMenu(timeoutMs = 15_000): Promise<HTMLElement> {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    const target = document.querySelector<HTMLElement>('#extensionsMenu, #extensions_menu');
+    // Only use the actual wand popup. `.extensions_block` is the settings
+    // drawer and choosing it makes the item appear to vanish from the wand.
+    const target = document.querySelector<HTMLElement>('#extensionsMenu, #extensionsMenuPopup, #extensions_menu');
     if (target) return target;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
