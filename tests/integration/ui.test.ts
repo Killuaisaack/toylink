@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToyLinkPanel, type ToyLinkUiCallbacks } from '../../src/ui/settings-panel';
 import { ToyLinkSettingsDisclosure } from '../../src/ui/settings-disclosure';
+import { ToyLinkEmergencyStopMenu } from '../../src/ui/emergency-stop-menu';
 import { DEFAULT_SETTINGS } from '../../src/core/settings';
 import type { CoordinatorSnapshot } from '../../src/core/coordinator';
 
@@ -29,14 +30,40 @@ const callbacks: ToyLinkUiCallbacks = {
 afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); });
 
 describe('中文引导界面', () => {
-  it('展示六个步骤和常驻停止按钮', () => {
+  it('展示六个步骤且不再创建右下角悬浮按钮', () => {
     const panel = new ToyLinkPanel(structuredClone(DEFAULT_SETTINGS), callbacks, false, false);
     document.body.append(panel.root);
     expect(panel.root.textContent).toContain('选择连接方式');
     expect(panel.root.textContent).toContain('调整安全上限');
     expect(panel.root.textContent).toContain('当前 SillyTavern 暂不支持');
-    expect(document.querySelector('.toylink-emergency-stop')?.textContent).toContain('立即停止');
+    expect(document.querySelector('.toylink-emergency-stop')).toBeNull();
     panel.destroy();
+  });
+
+
+  it('把立即停止放进魔法棒菜单，并随运行状态更新', async () => {
+    const host = document.createElement('div');
+    host.id = 'extensionsMenu';
+    document.body.append(host);
+    let stopCalls = 0;
+    const menu = new ToyLinkEmergencyStopMenu(async () => { stopCalls += 1; });
+    host.append(menu.button);
+    const snapshot: CoordinatorSnapshot = {
+      providerKind: 'intiface', connected: false, scanning: false, devices: [],
+      selectedDeviceId: null, aiAuthorized: false, active: false,
+      status: '尚未连接设备。', error: null, limits: { ...DEFAULT_SETTINGS.limits }, confirmationEnabled: true,
+    };
+    menu.update(snapshot);
+    expect(host.querySelector('.toylink-menu-stop')).toBe(menu.button);
+    expect(menu.button.textContent).toBe('立即停止');
+    menu.button.click();
+    await Promise.resolve();
+    expect(stopCalls).toBe(1);
+
+    menu.update({ ...snapshot, active: true });
+    expect(menu.button.textContent).toContain('正在运行');
+    expect(document.querySelector('.toylink-emergency-stop')).toBeNull();
+    menu.destroy();
   });
 
   it('设备名称只作为文本显示，不创建不安全元素', () => {

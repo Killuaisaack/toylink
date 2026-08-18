@@ -81,7 +81,6 @@ export class ToyLinkPanel {
   private readonly confirmToggle = node('input') as HTMLInputElement;
   private readonly maxIntensity = node('input') as HTMLInputElement;
   private readonly maxDuration = node('input') as HTMLInputElement;
-  private readonly floatingStop = button('立即停止');
   private readonly toolSupport = node('p', 'toylink-hint');
 
   constructor(
@@ -107,10 +106,6 @@ export class ToyLinkPanel {
     this.buildLimitsStep();
     this.buildDetails();
 
-    this.floatingStop.className = 'toylink-emergency-stop';
-    this.floatingStop.setAttribute('aria-label', '立即停止 ToyLink 设备');
-    this.floatingStop.addEventListener('click', () => { void this.run(() => this.callbacks.emergencyStop()); });
-    document.body.append(this.floatingStop);
     this.renderSettings();
   }
 
@@ -128,13 +123,11 @@ export class ToyLinkPanel {
     this.scanButton.disabled = snapshot.scanning || (snapshot.providerKind === 'intiface' && !snapshot.connected);
     this.stopScanButton.disabled = !snapshot.scanning;
     this.selectDeviceButton.disabled = this.deviceSelect.value === '' || !snapshot.connected;
-    this.floatingStop.classList.toggle('toylink-is-active', snapshot.active);
-    this.floatingStop.textContent = snapshot.active ? '立即停止（正在运行）' : '立即停止';
     this.renderDeviceOptions();
     this.renderSettings();
   }
 
-  destroy(): void { this.floatingStop.remove(); this.root.remove(); }
+  destroy(): void { this.root.remove(); }
 
   private buildProviderStep(): void {
     const section = node('div', 'toylink-step');

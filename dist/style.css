@@ -61,14 +61,15 @@
 .toylink-error:empty { display: none; }
 .toylink-primary { background: var(--toylink-accent) !important; color: white !important; }
 .toylink-details { padding: 0.6rem; border: 1px dashed currentColor; border-radius: 0.45rem; opacity: 0.9; }
-.toylink-emergency-stop {
-  position: fixed; right: max(1rem, env(safe-area-inset-right)); bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 10050;
-  min-width: 10rem; min-height: 3.25rem; padding: 0.7rem 1.1rem;
-  border: 3px solid white !important; border-radius: 999px !important;
-  background: var(--toylink-danger) !important; color: white !important; font-size: 1rem; font-weight: 800;
-  box-shadow: 0 0.35rem 1rem rgba(0,0,0,.45); cursor: pointer;
+.toylink-menu-stop {
+  color: white !important;
+  background: var(--toylink-danger, #d7263d) !important;
+  font-weight: 800;
 }
-.toylink-emergency-stop.toylink-is-active { animation: toylink-pulse 1s ease-in-out infinite alternate; }
+.toylink-menu-stop.toylink-is-active {
+  outline: 2px solid white;
+  outline-offset: 1px;
+}
 .toylink-modal-backdrop {
   position: fixed; inset: 0; z-index: 11000; display: grid; place-items: center; padding: 1rem;
   background: rgba(0,0,0,.72);
@@ -81,9 +82,6 @@
 .toylink-modal h3 { margin-top: 0; }
 .toylink-modal p { overflow-wrap: anywhere; line-height: 1.5; }
 .toylink-modal-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
-@keyframes toylink-pulse { from { transform: scale(1); } to { transform: scale(1.04); } }
 @media (max-width: 600px) {
   .toylink-panel { padding: 0.35rem; }
-  .toylink-emergency-stop { right: 0.65rem; bottom: 0.65rem; min-width: 8.5rem; }
 }
-@media (prefers-reduced-motion: reduce) { .toylink-emergency-stop.toylink-is-active { animation: none; } }

@@ -46,3 +46,14 @@ export async function waitForExtensionSettings(timeoutMs = 15_000): Promise<HTML
   }
   throw new Error('没有找到 SillyTavern 扩展设置区域。');
 }
+
+/** Wait for SillyTavern's dynamically-created magic-wand extensions menu. */
+export async function waitForExtensionsMenu(timeoutMs = 15_000): Promise<HTMLElement> {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const target = document.querySelector<HTMLElement>('#extensionsMenu, #extensions_menu');
+    if (target) return target;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error('没有找到 SillyTavern 魔法棒菜单。');
+}

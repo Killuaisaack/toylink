@@ -7,8 +7,9 @@ import { IntifaceProvider } from '../providers/intiface-provider';
 import type { ProviderKind, ToyProvider } from '../providers/toy-provider';
 import { ChineseConfirmationService, confirmBlePayload, confirmDangerousSetting, confirmDeleteProfile, confirmNonLoopback } from '../ui/confirm-dialog';
 import { ToyLinkSettingsDisclosure } from '../ui/settings-disclosure';
+import { ToyLinkEmergencyStopMenu } from '../ui/emergency-stop-menu';
 import { ToyLinkPanel, type ToyLinkUiCallbacks } from '../ui/settings-panel';
-import { getSillyTavernContext, waitForExtensionSettings, type SillyTavernContext } from './sillytavern';
+import { getSillyTavernContext, waitForExtensionSettings, waitForExtensionsMenu, type SillyTavernContext } from './sillytavern';
 import { ToyLinkToolCalling } from './tool-calling';
 
 const SETTINGS_KEY = 'toylink';
@@ -20,6 +21,7 @@ class ToyLinkExtension {
   private readonly tools: ToyLinkToolCalling;
   private panel: ToyLinkPanel | null = null;
   private settingsDisclosure: ToyLinkSettingsDisclosure | null = null;
+  private emergencyStopMenu: ToyLinkEmergencyStopMenu | null = null;
   private readonly contextHandler = (): void => { void this.coordinator.handleContextChange(); };
 
   constructor(private readonly context: SillyTavernContext) {
@@ -51,18 +53,40 @@ class ToyLinkExtension {
     );
     this.settingsDisclosure = new ToyLinkSettingsDisclosure(this.panel.root);
     target.append(this.settingsDisclosure.root);
-    this.coordinator.subscribe((snapshot) => this.panel?.update(snapshot, this.settings));
+    this.coordinator.subscribe((snapshot) => {
+      this.panel?.update(snapshot, this.settings);
+      this.emergencyStopMenu?.update(snapshot);
+    });
+    // 魔法棒菜单由 SillyTavern 动态创建；它不可用时不影响完整设置页。
+    void this.mountEmergencyStopMenu();
     this.tools.refresh();
     this.bindHostEvents();
     this.saveCurrentSettings();
   }
 
   shutdown(): void {
+    this.emergencyStopMenu?.destroy();
+    this.emergencyStopMenu = null;
     this.tools.dispose();
     this.unbindHostEvents();
     this.coordinator.shutdown();
     this.panel?.destroy();
     this.settingsDisclosure?.destroy();
+  }
+
+  private async mountEmergencyStopMenu(): Promise<void> {
+    try {
+      const target = await waitForExtensionsMenu();
+      if (this.emergencyStopMenu) return;
+      const menu = new ToyLinkEmergencyStopMenu(async () => {
+        await this.coordinator.emergencyStop('你已点击“立即停止”。');
+      });
+      this.emergencyStopMenu = menu;
+      target.append(menu.button);
+      menu.update(this.coordinator.snapshot());
+    } catch (error) {
+      console.warn('[ToyLink] 未能把“立即停止”加入魔法棒菜单。', error instanceof Error ? error.message : '未知错误');
+    }
   }
 
   private createCallbacks(): ToyLinkUiCallbacks {
