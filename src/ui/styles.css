@@ -1,30 +1,29 @@
-
-.toylink-quick-panel {
+.toylink-settings-entry {
   --toylink-accent: #8f5cff;
-  --toylink-danger: #d7263d;
-  display: grid;
-  gap: 0.65rem;
-  width: min(23rem, calc(100vw - 2rem));
-  max-height: min(76vh, 44rem);
-  overflow: auto;
-  padding: 0.75rem;
-  color: var(--SmartThemeBodyColor, inherit);
-  overscroll-behavior: contain;
+  width: 100%;
+  margin: 0.6rem 0;
+  border: 1px solid color-mix(in srgb, var(--SmartThemeBodyColor, #aaa) 25%, transparent);
+  border-radius: 0.65rem;
+  overflow: clip;
+  background: color-mix(in srgb, var(--SmartThemeBlurTintColor, #222) 88%, transparent);
 }
-.toylink-quick-panel * { box-sizing: border-box; }
-.toylink-quick-panel h3, .toylink-quick-panel h4 { margin: 0; }
-.toylink-quick-section {
-  display: grid;
-  gap: 0.55rem;
-  padding: 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--SmartThemeBodyColor, #aaa) 22%, transparent);
-  border-radius: 0.55rem;
-  background: color-mix(in srgb, var(--SmartThemeBlurTintColor, #222) 86%, transparent);
+.toylink-settings-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.75rem 0.9rem;
+  cursor: pointer;
+  user-select: none;
+  list-style-position: inside;
 }
-.toylink-quick-actions { display: grid; gap: 0.4rem; }
-.toylink-modal-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.toylink-modal-heading h3 { margin: 0; }
-.toylink-advanced-modal { width: min(48rem, 100%); }
+.toylink-settings-summary:hover,
+.toylink-settings-summary:focus-visible { background: color-mix(in srgb, var(--toylink-accent) 14%, transparent); }
+.toylink-settings-title { font-size: 1.05rem; font-weight: 750; }
+.toylink-settings-summary-hint { margin-left: auto; opacity: 0.72; font-size: 0.88rem; }
+.toylink-settings-entry[open] > .toylink-settings-summary { border-bottom: 1px solid color-mix(in srgb, var(--SmartThemeBodyColor, #aaa) 20%, transparent); }
+.toylink-settings-body { min-width: 0; }
 .toylink-panel {
   --toylink-accent: #8f5cff;
   --toylink-danger: #d7263d;
@@ -85,7 +84,6 @@
 @keyframes toylink-pulse { from { transform: scale(1); } to { transform: scale(1.04); } }
 @media (max-width: 600px) {
   .toylink-panel { padding: 0.35rem; }
-  .toylink-quick-panel { width: calc(100vw - 1rem); max-height: 72vh; padding: 0.45rem; }
   .toylink-emergency-stop { right: 0.65rem; bottom: 0.65rem; min-width: 8.5rem; }
 }
 @media (prefers-reduced-motion: reduce) { .toylink-emergency-stop.toylink-is-active { animation: none; } }

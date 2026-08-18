@@ -29,7 +29,6 @@ export interface ToyLinkUiCallbacks {
   exportBleProfile(): void;
   deleteBleProfile(): Promise<void>;
   selectBleProfile(id: string | null): Promise<void>;
-  openAdvancedSettings?(): void;
 }
 
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
@@ -90,7 +89,6 @@ export class ToyLinkPanel {
     private readonly callbacks: ToyLinkUiCallbacks,
     toolCallingSupported: boolean,
     bluetoothSupported: boolean,
-    includeFloatingStop = true,
   ) {
     this.settings = structuredClone(settings);
     this.root.id = 'toylink-settings';
@@ -109,12 +107,10 @@ export class ToyLinkPanel {
     this.buildLimitsStep();
     this.buildDetails();
 
-    if (includeFloatingStop) {
-      this.floatingStop.className = 'toylink-emergency-stop';
-      this.floatingStop.setAttribute('aria-label', '立即停止 ToyLink 设备');
-      this.floatingStop.addEventListener('click', () => { void this.run(() => this.callbacks.emergencyStop()); });
-      document.body.append(this.floatingStop);
-    }
+    this.floatingStop.className = 'toylink-emergency-stop';
+    this.floatingStop.setAttribute('aria-label', '立即停止 ToyLink 设备');
+    this.floatingStop.addEventListener('click', () => { void this.run(() => this.callbacks.emergencyStop()); });
+    document.body.append(this.floatingStop);
     this.renderSettings();
   }
 
