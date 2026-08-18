@@ -29,6 +29,7 @@ export interface ToyLinkUiCallbacks {
   exportBleProfile(): void;
   deleteBleProfile(): Promise<void>;
   selectBleProfile(id: string | null): Promise<void>;
+  openAdvancedSettings?(): void;
 }
 
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
@@ -89,6 +90,7 @@ export class ToyLinkPanel {
     private readonly callbacks: ToyLinkUiCallbacks,
     toolCallingSupported: boolean,
     bluetoothSupported: boolean,
+    includeFloatingStop = true,
   ) {
     this.settings = structuredClone(settings);
     this.root.id = 'toylink-settings';
@@ -107,10 +109,12 @@ export class ToyLinkPanel {
     this.buildLimitsStep();
     this.buildDetails();
 
-    this.floatingStop.className = 'toylink-emergency-stop';
-    this.floatingStop.setAttribute('aria-label', '立即停止 ToyLink 设备');
-    this.floatingStop.addEventListener('click', () => { void this.run(() => this.callbacks.emergencyStop()); });
-    document.body.append(this.floatingStop);
+    if (includeFloatingStop) {
+      this.floatingStop.className = 'toylink-emergency-stop';
+      this.floatingStop.setAttribute('aria-label', '立即停止 ToyLink 设备');
+      this.floatingStop.addEventListener('click', () => { void this.run(() => this.callbacks.emergencyStop()); });
+      document.body.append(this.floatingStop);
+    }
     this.renderSettings();
   }
 
@@ -254,7 +258,7 @@ export class ToyLinkPanel {
     const isBle = this.settings.providerKind === 'custom-ble';
     this.bleSection.hidden = !isBle;
     this.intifaceSection.hidden = isBle;
-    this.connectButton.textContent = isBle ? '打开系统设备选择窗口' : '连接 Intiface';
+    this.connectButton.textContent = isBle ? '启用蓝牙配置' : '连接 Intiface';
     this.scanButton.textContent = isBle ? '重新选择设备' : '开始查找';
     this.renderProfileOptions();
   }

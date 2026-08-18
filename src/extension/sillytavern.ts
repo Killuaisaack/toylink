@@ -37,6 +37,16 @@ export function getSillyTavernContext(): SillyTavernContext | null {
   catch { return null; }
 }
 
+export async function waitForExtensionsMenu(timeoutMs = 15_000): Promise<HTMLElement> {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const target = document.querySelector<HTMLElement>('#extensionsMenu, #extensions_menu');
+    if (target) return target;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error('\u6ca1\u6709\u627e\u5230 SillyTavern \u9b54\u6cd5\u68d2\u6269\u5c55\u83dc\u5355\u3002');
+}
+
 export async function waitForExtensionSettings(timeoutMs = 15_000): Promise<HTMLElement> {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {

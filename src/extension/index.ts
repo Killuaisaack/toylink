@@ -6,8 +6,9 @@ import { CustomBleProvider } from '../providers/custom-ble-provider';
 import { IntifaceProvider } from '../providers/intiface-provider';
 import type { ProviderKind, ToyProvider } from '../providers/toy-provider';
 import { ChineseConfirmationService, confirmBlePayload, confirmDangerousSetting, confirmDeleteProfile, confirmNonLoopback } from '../ui/confirm-dialog';
+import { ToyLinkQuickPanel } from '../ui/quick-panel';
 import { ToyLinkPanel, type ToyLinkUiCallbacks } from '../ui/settings-panel';
-import { getSillyTavernContext, waitForExtensionSettings, type SillyTavernContext } from './sillytavern';
+import { getSillyTavernContext, waitForExtensionsMenu, type SillyTavernContext } from './sillytavern';
 import { ToyLinkToolCalling } from './tool-calling';
 
 const SETTINGS_KEY = 'toylink';
@@ -18,6 +19,8 @@ class ToyLinkExtension {
   private readonly coordinator: ToyLinkCoordinator;
   private readonly tools: ToyLinkToolCalling;
   private panel: ToyLinkPanel | null = null;
+  private quickPanel: ToyLinkQuickPanel | null = null;
+  private advancedBackdrop: HTMLElement | null = null;
   private readonly contextHandler = (): void => { void this.coordinator.handleContextChange(); };
 
   constructor(private readonly context: SillyTavernContext) {
@@ -40,15 +43,18 @@ class ToyLinkExtension {
   }
 
   async start(): Promise<void> {
-    const target = await waitForExtensionSettings();
-    this.panel = new ToyLinkPanel(
+    const target = await waitForExtensionsMenu();
+    this.quickPanel = new ToyLinkQuickPanel(
       this.settings,
       this.createCallbacks(),
       this.tools.isSupported(),
       typeof navigator !== 'undefined' && 'bluetooth' in navigator,
     );
-    target.append(this.panel.root);
-    this.coordinator.subscribe((snapshot) => this.panel?.update(snapshot, this.settings));
+    target.append(this.quickPanel.root);
+    this.coordinator.subscribe((snapshot) => {
+      this.quickPanel?.update(snapshot, this.settings);
+      this.panel?.update(snapshot, this.settings);
+    });
     this.tools.refresh();
     this.bindHostEvents();
     this.saveCurrentSettings();
@@ -58,7 +64,8 @@ class ToyLinkExtension {
     this.tools.dispose();
     this.unbindHostEvents();
     this.coordinator.shutdown();
-    this.panel?.destroy();
+    this.closeAdvancedSettings();
+    this.quickPanel?.destroy();
   }
 
   private createCallbacks(): ToyLinkUiCallbacks {
@@ -90,6 +97,7 @@ class ToyLinkExtension {
       exportBleProfile: () => this.exportBleProfile(),
       deleteBleProfile: async () => this.deleteBleProfile(),
       selectBleProfile: async (id) => this.selectBleProfile(id),
+      openAdvancedSettings: () => this.openAdvancedSettings(),
     };
   }
 
@@ -193,9 +201,56 @@ class ToyLinkExtension {
     this.coordinator.reportStatus(id ? '已选择蓝牙配置，请重新连接设备。' : '尚未选择蓝牙配置。');
   }
 
+  private openAdvancedSettings(): void {
+    if (this.advancedBackdrop) return;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'toylink-modal-backdrop';
+    backdrop.setAttribute('role', 'presentation');
+    const dialog = document.createElement('div');
+    dialog.className = 'toylink-modal toylink-advanced-modal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-label', 'ToyLink \u5b8c\u6574\u8bbe\u7f6e');
+    const heading = document.createElement('div');
+    heading.className = 'toylink-modal-heading';
+    const title = document.createElement('h3');
+    title.textContent = 'ToyLink \u5b8c\u6574\u8bbe\u7f6e';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'menu_button';
+    close.textContent = '\u5173\u95ed';
+    close.setAttribute('aria-label', '\u5173\u95ed ToyLink \u5b8c\u6574\u8bbe\u7f6e');
+    heading.append(title, close);
+    const panel = new ToyLinkPanel(
+      this.settings,
+      this.createCallbacks(),
+      this.tools.isSupported(),
+      typeof navigator !== 'undefined' && 'bluetooth' in navigator,
+      false,
+    );
+    close.addEventListener('click', () => this.closeAdvancedSettings());
+    backdrop.addEventListener('click', (event) => {
+      if (event.target === backdrop) this.closeAdvancedSettings();
+    });
+    dialog.append(heading, panel.root);
+    backdrop.append(dialog);
+    document.body.append(backdrop);
+    this.advancedBackdrop = backdrop;
+    this.panel = panel;
+    panel.update(this.coordinator.snapshot(), this.settings);
+  }
+
+  private closeAdvancedSettings(): void {
+    this.panel?.destroy();
+    this.panel = null;
+    this.advancedBackdrop?.remove();
+    this.advancedBackdrop = null;
+  }
+
   private persist(settings: ToyLinkSettings): void {
     this.settings = structuredClone(settings);
     this.saveCurrentSettings();
+    this.quickPanel?.update(this.coordinator.snapshot(), this.settings);
     this.panel?.update(this.coordinator.snapshot(), this.settings);
   }
 
